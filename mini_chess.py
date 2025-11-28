@@ -1,8 +1,9 @@
-import sys
 import math
-import pygame
+import sys
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Dict
+from typing import Dict, List, Optional, Tuple
+
+import pygame
 
 # =========================
 # Config & Constants
@@ -23,38 +24,39 @@ SELECT_OUTLINE_WIDTH = 4
 
 # Unicode symbols for chess pieces
 UNICODE_PIECES = {
-    ('w', 'K'): '♔',
-    ('w', 'Q'): '♕',
-    ('w', 'R'): '♖',
-    ('w', 'B'): '♗',
-    ('w', 'N'): '♘',
-    ('w', 'P'): '♙',
-    ('b', 'K'): '♚',
-    ('b', 'Q'): '♛',
-    ('b', 'R'): '♜',
-    ('b', 'B'): '♝',
-    ('b', 'N'): '♞',
-    ('b', 'P'): '♟',
+    ("w", "K"): "♔",
+    ("w", "Q"): "♕",
+    ("w", "R"): "♖",
+    ("w", "B"): "♗",
+    ("w", "N"): "♘",
+    ("w", "P"): "♙",
+    ("b", "K"): "♚",
+    ("b", "Q"): "♛",
+    ("b", "R"): "♜",
+    ("b", "B"): "♝",
+    ("b", "N"): "♞",
+    ("b", "P"): "♟",
 }
 
 # Piece values for evaluation
 PIECE_VALUES = {
-    'P': 1,
-    'N': 3,
-    'B': 3,
-    'R': 5,
-    'Q': 9,
-    'K': 0  # We don't evaluate king value in simple material (we avoid infinity)
+    "P": 1,
+    "N": 3,
+    "B": 3,
+    "R": 5,
+    "Q": 9,
+    "K": 0,  # We don't evaluate king value in simple material (we avoid infinity)
 }
 
 # =========================
 # Data Structures
 # =========================
 
+
 @dataclass
 class Piece:
     color: str  # 'w' or 'b'
-    kind: str   # 'K','Q','R','B','N','P'
+    kind: str  # 'K','Q','R','B','N','P'
 
     def symbol(self) -> str:
         return UNICODE_PIECES[(self.color, self.kind)]
@@ -71,34 +73,52 @@ class Move:
 # Board Representation
 # =========================
 
+
 class Board:
     def __init__(self):
         # board[r][c] with r=0 at top (Black side), r=7 at bottom (White side)
-        self.board: List[List[Optional[Piece]]] = [[None for _ in range(COLS)] for _ in range(ROWS)]
-        self.to_move: str = 'w'  # 'w' or 'b'
+        self.board: List[List[Optional[Piece]]] = [
+            [None for _ in range(COLS)] for _ in range(ROWS)
+        ]
+        self.to_move: str = "w"  # 'w' or 'b'
         self._setup_initial()
 
     def _setup_initial(self):
         # Black pieces
         self.board[0] = [
-            Piece('b', 'R'), Piece('b', 'N'), Piece('b', 'B'), Piece('b', 'Q'),
-            Piece('b', 'K'), Piece('b', 'B'), Piece('b', 'N'), Piece('b', 'R')
+            Piece("b", "R"),
+            Piece("b", "N"),
+            Piece("b", "B"),
+            Piece("b", "Q"),
+            Piece("b", "K"),
+            Piece("b", "B"),
+            Piece("b", "N"),
+            Piece("b", "R"),
         ]
-        self.board[1] = [Piece('b', 'P') for _ in range(COLS)]
+        self.board[1] = [Piece("b", "P") for _ in range(COLS)]
         # Empty middle
         for r in range(2, 6):
             self.board[r] = [None for _ in range(COLS)]
         # White pieces
-        self.board[6] = [Piece('w', 'P') for _ in range(COLS)]
+        self.board[6] = [Piece("w", "P") for _ in range(COLS)]
         self.board[7] = [
-            Piece('w', 'R'), Piece('w', 'N'), Piece('w', 'B'), Piece('w', 'Q'),
-            Piece('w', 'K'), Piece('w', 'B'), Piece('w', 'N'), Piece('w', 'R')
+            Piece("w", "R"),
+            Piece("w", "N"),
+            Piece("w", "B"),
+            Piece("w", "Q"),
+            Piece("w", "K"),
+            Piece("w", "B"),
+            Piece("w", "N"),
+            Piece("w", "R"),
         ]
-        self.to_move = 'w'
+        self.to_move = "w"
 
-    def clone(self) -> 'Board':
+    def clone(self) -> "Board":
         new_b = Board.__new__(Board)
-        new_b.board = [[None if p is None else Piece(p.color, p.kind) for p in row] for row in self.board]
+        new_b.board = [
+            [None if p is None else Piece(p.color, p.kind) for p in row]
+            for row in self.board
+        ]
         new_b.to_move = self.to_move
         return new_b
 
@@ -118,12 +138,12 @@ class Board:
         er, ec = mv.end
         piece = self.get(sr, sc)
         self.set(sr, sc, None)
-        if mv.promotion and piece and piece.kind == 'P':
+        if mv.promotion and piece and piece.kind == "P":
             self.set(er, ec, Piece(piece.color, mv.promotion))
         else:
             self.set(er, ec, piece)
         # Toggle side to move
-        self.to_move = 'b' if self.to_move == 'w' else 'w'
+        self.to_move = "b" if self.to_move == "w" else "w"
 
     def all_pieces(self):
         for r in range(ROWS):
@@ -137,13 +157,14 @@ class Board:
         score = 0
         for _, _, p in self.all_pieces():
             val = PIECE_VALUES[p.kind]
-            score += val if p.color == 'w' else -val
+            score += val if p.color == "w" else -val
         return score
 
 
 # =========================
 # Rules Engine
 # =========================
+
 
 class Rules:
     @staticmethod
@@ -157,25 +178,44 @@ class Rules:
 
     @staticmethod
     def _piece_moves(board: Board, r: int, c: int, p: Piece) -> List[Move]:
-        if p.kind == 'P':
+        if p.kind == "P":
             return Rules._pawn_moves(board, r, c, p.color)
-        elif p.kind == 'N':
+        elif p.kind == "N":
             return Rules._knight_moves(board, r, c, p.color)
-        elif p.kind == 'B':
-            return Rules._slider_moves(board, r, c, p.color, directions=[(-1,-1),(-1,1),(1,-1),(1,1)])
-        elif p.kind == 'R':
-            return Rules._slider_moves(board, r, c, p.color, directions=[(-1,0),(1,0),(0,-1),(0,1)])
-        elif p.kind == 'Q':
-            return Rules._slider_moves(board, r, c, p.color, directions=[(-1,-1),(-1,1),(1,-1),(1,1),(-1,0),(1,0),(0,-1),(0,1)])
-        elif p.kind == 'K':
+        elif p.kind == "B":
+            return Rules._slider_moves(
+                board, r, c, p.color, directions=[(-1, -1), (-1, 1), (1, -1), (1, 1)]
+            )
+        elif p.kind == "R":
+            return Rules._slider_moves(
+                board, r, c, p.color, directions=[(-1, 0), (1, 0), (0, -1), (0, 1)]
+            )
+        elif p.kind == "Q":
+            return Rules._slider_moves(
+                board,
+                r,
+                c,
+                p.color,
+                directions=[
+                    (-1, -1),
+                    (-1, 1),
+                    (1, -1),
+                    (1, 1),
+                    (-1, 0),
+                    (1, 0),
+                    (0, -1),
+                    (0, 1),
+                ],
+            )
+        elif p.kind == "K":
             return Rules._king_moves(board, r, c, p.color)
         return []
 
     @staticmethod
     def _pawn_moves(board: Board, r: int, c: int, color: str) -> List[Move]:
         moves = []
-        dir_ = -1 if color == 'w' else 1
-        start_row = 6 if color == 'w' else 1
+        dir_ = -1 if color == "w" else 1
+        start_row = 6 if color == "w" else 1
         # Forward 1
         nr = r + dir_
         if board.in_bounds(nr, c) and board.get(nr, c) is None:
@@ -191,20 +231,31 @@ class Rules:
             if board.in_bounds(nr, nc):
                 target = board.get(nr, nc)
                 if target and target.color != color:
-                    moves.append(Rules._maybe_promote(Move((r, c), (nr, nc)), color, nr))
+                    moves.append(
+                        Rules._maybe_promote(Move((r, c), (nr, nc)), color, nr)
+                    )
         # No en passant implemented for simplicity
         return moves
 
     @staticmethod
     def _maybe_promote(mv: Move, color: str, dest_row: int) -> Move:
-        if (color == 'w' and dest_row == 0) or (color == 'b' and dest_row == 7):
-            mv.promotion = 'Q'
+        if (color == "w" and dest_row == 0) or (color == "b" and dest_row == 7):
+            mv.promotion = "Q"
         return mv
 
     @staticmethod
     def _knight_moves(board: Board, r: int, c: int, color: str) -> List[Move]:
         moves = []
-        for dr, dc in [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)]:
+        for dr, dc in [
+            (-2, -1),
+            (-2, 1),
+            (-1, -2),
+            (-1, 2),
+            (1, -2),
+            (1, 2),
+            (2, -1),
+            (2, 1),
+        ]:
             nr, nc = r + dr, c + dc
             if not board.in_bounds(nr, nc):
                 continue
@@ -214,7 +265,9 @@ class Rules:
         return moves
 
     @staticmethod
-    def _slider_moves(board: Board, r: int, c: int, color: str, directions: List[Tuple[int,int]]) -> List[Move]:
+    def _slider_moves(
+        board: Board, r: int, c: int, color: str, directions: List[Tuple[int, int]]
+    ) -> List[Move]:
         moves = []
         for dr, dc in directions:
             nr, nc = r + dr, c + dc
@@ -252,25 +305,34 @@ class Rules:
         for rr, cc, p in board.all_pieces():
             if p.color != by_color:
                 continue
-            if p.kind == 'P':
-                dir_ = -1 if by_color == 'w' else 1
+            if p.kind == "P":
+                dir_ = -1 if by_color == "w" else 1
                 for dc in (-1, 1):
                     nr, nc = rr + dir_, cc + dc
                     if nr == r and nc == c:
                         if board.in_bounds(nr, nc):
                             # Pawn attacks regardless of occupancy
                             return True
-            elif p.kind == 'N':
-                for dr, dc in [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)]:
+            elif p.kind == "N":
+                for dr, dc in [
+                    (-2, -1),
+                    (-2, 1),
+                    (-1, -2),
+                    (-1, 2),
+                    (1, -2),
+                    (1, 2),
+                    (2, -1),
+                    (2, 1),
+                ]:
                     if rr + dr == r and cc + dc == c:
                         if board.in_bounds(r, c):
                             return True
-            elif p.kind in ('B', 'R', 'Q'):
+            elif p.kind in ("B", "R", "Q"):
                 directions = []
-                if p.kind in ('B', 'Q'):
-                    directions += [(-1,-1),(-1,1),(1,-1),(1,1)]
-                if p.kind in ('R', 'Q'):
-                    directions += [(-1,0),(1,0),(0,-1),(0,1)]
+                if p.kind in ("B", "Q"):
+                    directions += [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+                if p.kind in ("R", "Q"):
+                    directions += [(-1, 0), (1, 0), (0, -1), (0, 1)]
                 for dr, dc in directions:
                     nr, nc = rr + dr, cc + dc
                     while board.in_bounds(nr, nc):
@@ -280,7 +342,7 @@ class Rules:
                             break
                         nr += dr
                         nc += dc
-            elif p.kind == 'K':
+            elif p.kind == "K":
                 for dr in (-1, 0, 1):
                     for dc in (-1, 0, 1):
                         if dr == 0 and dc == 0:
@@ -293,6 +355,7 @@ class Rules:
 # =========================
 # Simple AI
 # =========================
+
 
 class SimpleAI:
     def __init__(self, color: str):
@@ -316,7 +379,9 @@ class SimpleAI:
                 sim.move_piece(mv)
                 # After move, our piece is now at (er,ec) in sim, and it's opponent to move
                 # Check if our captured piece is safe (i.e., not attacked by opponent)
-                if not Rules.is_square_attacked(sim, er, ec, by_color=('w' if self.color == 'b' else 'b')):
+                if not Rules.is_square_attacked(
+                    sim, er, ec, by_color=("w" if self.color == "b" else "b")
+                ):
                     val = PIECE_VALUES[target.kind]
                     if val > best_capture_value:
                         best_capture_value = val
@@ -325,13 +390,13 @@ class SimpleAI:
             return best_free_capture
 
         # 2) Otherwise, pick move that maximizes material evaluation after one ply
-        best_eval = -math.inf if self.color == 'w' else math.inf
+        best_eval = -math.inf if self.color == "w" else math.inf
         best_move = None
         for mv in moves:
             sim = board.clone()
             sim.move_piece(mv)
             eval_score = sim.material()
-            if self.color == 'w':
+            if self.color == "w":
                 if eval_score > best_eval:
                     best_eval = eval_score
                     best_move = mv
@@ -348,24 +413,38 @@ class SimpleAI:
 # Rendering & UI
 # =========================
 
+
 class Renderer:
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
         self.font = self._load_font()
         # Pre-render move dot
-        self.move_dot = pygame.Surface((TILE_SIZE // 6, TILE_SIZE // 6), pygame.SRCALPHA)
+        self.move_dot = pygame.Surface(
+            (TILE_SIZE // 6, TILE_SIZE // 6), pygame.SRCALPHA
+        )
         self.move_dot.fill((0, 0, 0, 0))
-        pygame.draw.circle(self.move_dot, MOVE_DOT + (MOVE_DOT_ALPHA,), (self.move_dot.get_width()//2, self.move_dot.get_height()//2), self.move_dot.get_width()//2)
+        pygame.draw.circle(
+            self.move_dot,
+            MOVE_DOT + (MOVE_DOT_ALPHA,),
+            (self.move_dot.get_width() // 2, self.move_dot.get_height() // 2),
+            self.move_dot.get_width() // 2,
+        )
 
     def _load_font(self) -> pygame.font.Font:
         # Try fonts that typically contain chess unicode
-        candidates = ['Segoe UI Symbol', 'DejaVu Sans', 'Arial Unicode MS', 'Noto Sans Symbols2', 'Noto Sans Symbols']
+        candidates = [
+            "Segoe UI Symbol",
+            "DejaVu Sans",
+            "Arial Unicode MS",
+            "Noto Sans Symbols2",
+            "Noto Sans Symbols",
+        ]
         size = int(TILE_SIZE * 0.8)
         for name in candidates:
             try:
                 f = pygame.font.SysFont(name, size)
                 # Test render a chess king
-                test = f.render('♔', True, (0, 0, 0))
+                test = f.render("♔", True, (0, 0, 0))
                 if test.get_width() > 0:
                     return f
             except Exception:
@@ -373,7 +452,7 @@ class Renderer:
         # Fallback default
         return pygame.font.SysFont(None, size)
 
-    def draw_board(self, selected: Optional[Tuple[int,int]], moves: List[Move]):
+    def draw_board(self, selected: Optional[Tuple[int, int]], moves: List[Move]):
         # Draw squares
         for r in range(ROWS):
             for c in range(COLS):
@@ -405,19 +484,22 @@ class Renderer:
                 if not p:
                     continue
                 text = p.symbol()
-                color = (20, 20, 20) if p.color == 'b' else (245, 245, 245)
+                color = (20, 20, 20) if p.color == "b" else (245, 245, 245)
                 glyph = self.font.render(text, True, color)
                 gx, gy = glyph.get_size()
                 x = c * TILE_SIZE + (TILE_SIZE - gx) // 2
                 y = r * TILE_SIZE + (TILE_SIZE - gy) // 2
                 # Draw slight shadow for visibility on light squares
-                self.screen.blit(self.font.render(text, True, (0, 0, 0)), (x+1, y+1))
+                self.screen.blit(
+                    self.font.render(text, True, (0, 0, 0)), (x + 1, y + 1)
+                )
                 self.screen.blit(glyph, (x, y))
 
 
 # =========================
 # Game Controller
 # =========================
+
 
 class Game:
     def __init__(self):
@@ -429,10 +511,10 @@ class Game:
         self.renderer = Renderer(self.screen)
 
         # Human plays white, AI plays black
-        self.human_color = 'w'
-        self.ai = SimpleAI('b')
+        self.human_color = "w"
+        self.ai = SimpleAI("b")
 
-        self.selected: Optional[Tuple[int,int]] = None
+        self.selected: Optional[Tuple[int, int]] = None
         self.legal_moves_from_selected: List[Move] = []
         self.running = True
 
@@ -466,7 +548,7 @@ class Game:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self._handle_click(event.pos)
 
-    def _handle_click(self, pos: Tuple[int,int]):
+    def _handle_click(self, pos: Tuple[int, int]):
         if self.board.to_move != self.human_color:
             return
         c = pos[0] // TILE_SIZE
@@ -477,7 +559,11 @@ class Game:
             p = self.board.get(r, c)
             if p and p.color == self.human_color:
                 self.selected = (r, c)
-                self.legal_moves_from_selected = [mv for mv in Rules.generate_moves(self.board, self.human_color) if mv.start == (r, c)]
+                self.legal_moves_from_selected = [
+                    mv
+                    for mv in Rules.generate_moves(self.board, self.human_color)
+                    if mv.start == (r, c)
+                ]
         else:
             # Attempt to move to clicked square if legal
             mv = None
@@ -495,7 +581,11 @@ class Game:
                 p = self.board.get(r, c)
                 if p and p.color == self.human_color:
                     self.selected = (r, c)
-                    self.legal_moves_from_selected = [m for m in Rules.generate_moves(self.board, self.human_color) if m.start == (r, c)]
+                    self.legal_moves_from_selected = [
+                        m
+                        for m in Rules.generate_moves(self.board, self.human_color)
+                        if m.start == (r, c)
+                    ]
                 else:
                     self.selected = None
                     self.legal_moves_from_selected = []
